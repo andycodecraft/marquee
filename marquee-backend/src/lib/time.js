@@ -1,0 +1,1 @@
+exports.daysFromNowISO = (n) => new Date(Date.now() + n*24*60*60*1000).toISOString();
