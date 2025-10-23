@@ -14,9 +14,12 @@ import {
   InputAdornment,
 } from "@mui/material";
 import { GoogleLogin } from "@react-oauth/google";
+import { api } from "../api/client";
 import { jwtDecode } from "jwt-decode"; // <-- named import
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
+import { useNavigate } from "react-router-dom";
 import Nav, { GUTTER } from "../ui/Nav";
+import { AuthContext } from "../state/AuthContext";
 
 /* Dark theme */
 const theme = createTheme({
@@ -80,8 +83,36 @@ export default function SignupPage() {
     email: "",
     birthday: "",
   });
+  const [submitting, setSubmitting] = React.useState(false);
+  const [serverError, setServerError] = React.useState("");
   const [googleIdToken, setGoogleIdToken] = React.useState(null);
   const [errors, setErrors] = React.useState({});
+  const [alreadyRegistered, setAlreadyRegistered] = React.useState(false); // <--
+  const [loginStage, setLoginStage] = React.useState("start");             // start|verify
+  const [code, setCode] = React.useState("");
+  const { setUser } = React.useContext(AuthContext);
+  const navigate = useNavigate();
+
+  const startEmailLogin = async () => {
+    try {
+      await api("/api/login/email/start", { method: "POST", body: { email: values.email } });
+      setLoginStage("verify");
+      setServerError("");
+      alert("We emailed you a 6-digit code (check spam; in dev it’s in the server log).");
+    } catch (e) {
+      setServerError(e.message);
+    }
+  };
+
+  const verifyEmailLogin = async () => {
+    try {
+      await api("/api/login/email/verify", { method: "POST", body: { email: values.email, code } });
+      alert("Logged in!");
+      // optionally redirect
+    } catch (e) {
+      setServerError(e.message);
+    }
+  };
 
   const onChange = (e) =>
     setValues((v) => ({ ...v, [e.target.name]: e.target.value }));
@@ -94,10 +125,10 @@ export default function SignupPage() {
       setValues((v) => ({
         ...v,
         firstName: payload.given_name || v.firstName,
-        lastName:  payload.family_name || v.lastName,
-        email:     payload.email || v.email,
+        lastName: payload.family_name || v.lastName,
+        email: payload.email || v.email,
       }));
-    } catch {}
+    } catch { }
   };
   const onGoogleError = () => console.warn("Google login failed");
 
@@ -115,22 +146,36 @@ export default function SignupPage() {
 
   const submit = async (ev) => {
     ev.preventDefault();
+    setServerError("");
+    setAlreadyRegistered(false);
     if (!validate()) return;
 
-    // const resp = await fetch("http://localhost:8080/api/signup", {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify({ ...values, googleIdToken }),
-    // });
-
-    // const data = await resp.json();
-    // if (!resp.ok) {
-    //   alert(`Signup failed: ${data?.error || "Unknown error"}`);
-    //   return;
-    // }
-    alert("Thanks! You’re on the list 🎉");
-    setValues({ firstName:"", lastName:"", phone:"", email:"", birthday:"" });
-    setGoogleIdToken(null);
+    try {
+      setSubmitting(true);
+      await api("/api/signup", {
+        method: "POST",
+        body: { ...values, googleIdToken },
+      });
+      alert("Thanks! You’re on the list 🎉");
+      const { user } = await api("/api/me");
+      setUser(user);
+      console.log(user)
+      setValues({ firstName: "", lastName: "", phone: "", email: "", birthday: "" });
+      setGoogleIdToken(null);
+      navigate("/", { replace: true });
+    } catch (e) {
+      if (e.status === 409 && e?.info?.code === "USER_EXISTS") {
+        setAlreadyRegistered(true);
+        setServerError("");
+        alert("You're already registered.");
+        // Optionally kick off email-code automatically:
+        // await startEmailLogin();
+      } else {
+        setServerError(e.message);
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -384,7 +429,11 @@ export default function SignupPage() {
                 >
                   <Divider sx={{ borderColor: "rgba(255,255,255,0.20)" }} />
                 </Box>
-
+                {serverError && (
+                  <Typography color="error" sx={{ mb: 1 }}>
+                    {serverError}
+                  </Typography>
+                )}
                 <Button
                   type="submit"
                   variant="contained"
@@ -404,7 +453,7 @@ export default function SignupPage() {
                     justifySelf: "start",
                   }}
                 >
-                  Sign Up
+                  {submitting ? "Submitting..." : "Sign Up"}
                 </Button>
 
                 <Typography

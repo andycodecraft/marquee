@@ -5,16 +5,24 @@ import {
 import { Link as RouterLink } from "react-router-dom";
 
 export const GUTTER = "clamp(16px, 4vw, 40px)";
+const LOGO_URL =
+  "https://images.squarespace-cdn.com/content/v1/66c78be8680dbf3f0637d706/a4ddbd6d-fa30-453e-97d5-9cca7fa4774b/Untitled+%28500+x+200+px%29+%281%29.png?format=1500w";
 
 function MarqueeLogo(props) {
   return (
-    <svg width={220} height={50} viewBox="0 0 280 56" fill="none" {...props}>
-      <g fill="#F3F4F6">
-        <text x="0" y="22" fontFamily="Inter, Arial, sans-serif" fontWeight="500" fontSize="32" letterSpacing="4">MARQUEE</text>
-        <rect x="0" y="28" width="185" height="2" />
-        <text x="0" y="52" fontFamily="Inter, Arial, sans-serif" fontWeight="500" fontSize="24" letterSpacing="6">NEW YORK</text>
-      </g>
-    </svg>
+    <Box
+      component="img"
+      src={LOGO_URL}
+      alt="Marquee New York"
+      loading="eager"
+      decoding="async"
+      sx={{
+        height: { xs: 40, md: 48 }, // tweak size here
+        width: "auto",
+        display: "block",
+      }}
+      {...props}
+    />
   );
 }
 
@@ -72,7 +80,7 @@ export default function Nav() {
                 "&:focus-visible": { outline: "2px solid rgba(255,255,255,0.6)", outlineOffset: 2 },
               }}
             >
-              Buy Tickets
+              Become a member
             </Button>
           </Stack>
         </Toolbar>
